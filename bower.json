@@ -1,7 +1,7 @@
 {
-  "name": "hinclude",
-  "version": "0.9.5",
-  "main": "hinclude.js",
+  "name": "s-hinclude",
+  "version": "0.1.0",
+  "main": "s-hinclude.js",
   "ignore": [
     "**/.*",
     "node_modules",

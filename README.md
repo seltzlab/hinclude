@@ -1,14 +1,14 @@
-# hinclude.js
+# s-hinclude.js
 
-<a href="http://travis-ci.org/mnot/hinclude"><img src="https://secure.travis-ci.org/mnot/hinclude.png?branch=master"></a>
+This is a fork of http://mnot.github.com/hinclude/
+To use it include s-hinclude.js file in your head
 
-Tired of regenerating HTML pages from templates? Want more from Web caches?
-*HInclude* makes one thing very easy; including other bits of HTML into your
-Web page, _using the browser_.
+```html
+<div data-include-src="http://path/to/your/file.html"></div>
+```
 
-HInclude is declarative client-side inclusion for the Web; it allows easy
-composition of Web pages using the browser -- making your pages more modular,
-more cacheable, and easier to maintain. 
+You can pass parameters to the included file
+```html
+<div data-include-src="http://path/to/your/file.html" data-foo="bar"></div>
+```
 
-See [the demo page](http://mnot.github.com/hinclude/) for documentation and
-examples.

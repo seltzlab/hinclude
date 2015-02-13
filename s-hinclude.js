@@ -74,10 +74,7 @@ var hinclude;
       var i = 0;
       var mode = this.get_meta("include_mode", "buffered");
       var callback = function (element, req) {};
-      this.includes = document.getElementsByTagName("hx:include");
-      if (this.includes.length === 0) { // remove ns for IE
-        this.includes = document.getElementsByTagName("include");
-      }
+      this.includes = this.getAllElementsWithAttribute("data-include-src");
       if (mode === "async") {
         callback = this.set_content_async;
       } else if (mode === "buffered") {
@@ -87,11 +84,12 @@ var hinclude;
       }
 
       for (i; i < this.includes.length; i += 1) {
-        this.include(this.includes[i], this.includes[i].getAttribute("src"), this.includes[i].getAttribute("media"), callback);
+        var data = this.collectData(this.includes[i]);
+        this.include(this.includes[i], this.includes[i].getAttribute("data-include-src"), this.includes[i].getAttribute("media"), data, callback);
       }
     },
 
-    include: function (element, url, media, incl_cb) {
+    include: function (element, url, media, data, incl_cb) {
       if (media && window.matchMedia && !window.matchMedia(media).matches) {
         return;
       }
@@ -119,15 +117,45 @@ var hinclude;
           req.onreadystatechange = function () {
             incl_cb(element, req);
           };
-          try {
-            req.open("GET", url, true);
-            req.send("");
+          try {          
+            req.open("GET", url.replace(/(?:\?.*)?$/, data.length > 0 ? "?" + data.join("&") : ""), true);
+            req.send(data);
           } catch (e3) {
             this.outstanding -= 1;
             alert("Include error: " + url + " (" + e3 + ")");
           }
         }
       }
+    },
+
+    collectData: function(el)
+    {
+      var data = [];
+      [].forEach.call(el.attributes, function(attr) {
+        if (/^data-/.test(attr.name) && attr.name != 'data-include-src') {
+          data.push(attr.name.substr(5) + '=' + encodeURIComponent(attr.value));
+        }
+      });
+
+      return data;
+    },
+
+    /**
+     * credits: http://stackoverflow.com/questions/9496427/can-i-get-elements-by-attribute-selector-when-queryselectorall-is-not-available
+     */
+    getAllElementsWithAttribute: function(attribute)
+    {
+      var matchingElements = [];
+      var allElements = document.getElementsByTagName('*');
+      for (var i = 0, n = allElements.length; i < n; i++)
+      {
+        if (allElements[i].getAttribute(attribute) != null)
+        {
+          // Element exists with attribute. Add to array.
+          matchingElements.push(allElements[i]);
+        }
+      }
+      return matchingElements;
     },
 
     refresh: function (element_id) {
@@ -137,7 +165,8 @@ var hinclude;
       callback = this.set_content_buffered;
       for (i; i < this.includes.length; i += 1) {
         if (this.includes[i].getAttribute("id") === element_id) {
-          this.include(this.includes[i], this.includes[i].getAttribute("src"), callback);
+          var data = this.collectData(this.includes[i]);
+          this.include(this.includes[i], this.includes[i].getAttribute("src"), data, callback);
         }
       }
     },
