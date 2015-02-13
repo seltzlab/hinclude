@@ -1,5 +1,5 @@
 {
-    "name": "S-Hinclude",
+    "name": "hinclude",
     "version": "0.1.0",
     "author": "Antonino Caccamo <antonio@seltzlab.com>",
     "description": "Declarative client-side inclusion for the Web",
