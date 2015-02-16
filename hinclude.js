@@ -37,20 +37,30 @@ var hinclude;
 
   hinclude = {
     classprefix: "include_",
+    dataIncludeSrc: "data-include-src",
 
-    set_content_async: function (element, req) {
+    callbackRegistry: {},
+    registerCallback: function(elementId, callback) {
+      this.callbackRegistry[elementId] = callback;
+    },
+
+    set_content_async: function (element, req, data) {
       if (req.readyState === 4) {
         if (req.status === 200 || req.status === 304) {
           element.innerHTML = req.responseText;
+          hinclude.runJs(element);
+          if (typeof hinclude.callbackRegistry[element.id] === "function") {
+            hinclude.callbackRegistry[element.id](element, req, data);
+          }
         }
         element.className = hinclude.classprefix + req.status;
       }
     },
 
     buffer: [],
-    set_content_buffered: function (element, req) {
+    set_content_buffered: function (element, req, data) {
       if (req.readyState === 4) {
-        hinclude.buffer.push([element, req]);
+        hinclude.buffer.push([element, req, data]);
         hinclude.outstanding -= 1;
         if (hinclude.outstanding === 0) {
           hinclude.show_buffered_content();
@@ -63,6 +73,10 @@ var hinclude;
         var include = hinclude.buffer.pop();
         if (include[1].status === 200 || include[1].status === 304) {
           include[0].innerHTML = include[1].responseText;
+          hinclude.runJs(include[0]);
+          if (typeof hinclude.callbackRegistry[include[0].id] === "function") {
+            hinclude.callbackRegistry[include[0].id](include[0], include[1], include[2]);
+          }
         }
         include[0].className = hinclude.classprefix + include[1].status;
       }
@@ -73,8 +87,8 @@ var hinclude;
     run: function () {
       var i = 0;
       var mode = this.get_meta("include_mode", "buffered");
+      
       var callback = function (element, req) {};
-      this.includes = this.getAllElementsWithAttribute("data-include-src");
       if (mode === "async") {
         callback = this.set_content_async;
       } else if (mode === "buffered") {
@@ -82,14 +96,19 @@ var hinclude;
         var timeout = this.get_meta("include_timeout", 2.5) * 1000;
         setTimeout(hinclude.show_buffered_content, timeout);
       }
+      
+      var self = this;
+      
+      this.includes = this.getAllElementsWithAttribute(this.dataIncludeSrc);
 
       for (i; i < this.includes.length; i += 1) {
-        var data = this.collectData(this.includes[i]);
-        this.include(this.includes[i], this.includes[i].getAttribute("data-include-src"), this.includes[i].getAttribute("media"), data, callback);
+        this.include(this.includes[i], this.includes[i].getAttribute(this.dataIncludeSrc), this.includes[i].getAttribute("media"), callback);
       }
     },
 
-    include: function (element, url, media, data, incl_cb) {
+    include: function (element, url, media, incl_cb) {
+      var self = this;
+
       if (media && window.matchMedia && !window.matchMedia(media).matches) {
         return;
       }
@@ -112,14 +131,17 @@ var hinclude;
             req = false;
           }
         }
+
+        var data = this.collectData(element);
+
         if (req) {
           this.outstanding += 1;
           req.onreadystatechange = function () {
-            incl_cb(element, req);
+            incl_cb.apply(self, [element, req, data]);
           };
           try {          
-            req.open("GET", url.replace(/(?:\?.*)?$/, data.length > 0 ? "?" + data.join("&") : ""), true);
-            req.send(data);
+            req.open("GET", url);
+            req.send();
           } catch (e3) {
             this.outstanding -= 1;
             alert("Include error: " + url + " (" + e3 + ")");
@@ -128,12 +150,20 @@ var hinclude;
       }
     },
 
+    runJs: function (element) {
+      var scripts = element.getElementsByTagName('script');
+      for (var i = 0; i < scripts.length; i++) {
+        eval(scripts[i].innerHTML);
+      }
+    },
+
     collectData: function(el)
     {
+      var self = this;
       var data = [];
       [].forEach.call(el.attributes, function(attr) {
-        if (/^data-/.test(attr.name) && attr.name != 'data-include-src') {
-          data.push(attr.name.substr(5) + '=' + encodeURIComponent(attr.value));
+        if (/^data-/.test(attr.name) && attr.name != self.dataIncludeSrc) {
+          data[attr.name.substr(5)] = encodeURIComponent(attr.value);
         }
       });
 
