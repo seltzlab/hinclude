@@ -213,70 +213,59 @@ var hinclude;
       return value_default;
     },
 
-    /*
-     * (c)2006 Dean Edwards/Matthias Miller/John Resig
-     * Special thanks to Dan Webb's domready.js Prototype extension
-     * and Simon Willison's addLoadEvent
+    /*!
+     * contentloaded.js
      *
-     * For more info, see:
-     * http://dean.edwards.name/weblog/2006/06/again/
+     * Author: Diego Perini (diego.perini at gmail.com)
+     * Summary: cross-browser wrapper for DOMContentLoaded
+     * Updated: 20101020
+     * License: MIT
+     * Version: 1.2
      *
-     * Thrown together by Jesse Skinner (http://www.thefutureoftheweb.com/)
+     * URL:
+     * http://javascript.nwbox.com/ContentLoaded/
+     * http://javascript.nwbox.com/ContentLoaded/MIT-LICENSE
+     *
      */
-    addDOMLoadEvent: function (func) {
-      if (!window.__load_events) {
-        var init = function () {
-          var i = 0;
-          // quit if this function has already been called
-          if (hinclude.addDOMLoadEvent.done) {return; }
-          hinclude.addDOMLoadEvent.done = true;
-          if (window.__load_timer) {
-            clearInterval(window.__load_timer);
-            window.__load_timer = null;
-          }
-          for (i; i < window.__load_events.length; i += 1) {
-            window.__load_events[i]();
-          }
-          window.__load_events = null;
-          // clean up the __ie_onload event
-          /*@cc_on
-          document.getElementById("__ie_onload").onreadystatechange = "";
-          @*/
-        };
-        // for Mozilla/Opera9
-        if (document.addEventListener) {
-          document.addEventListener("DOMContentLoaded", init, false);
+    // @win window reference
+    // @fn function reference
+    contentLoaded: function(win, fn) {
+
+      var done = false, top = true,
+
+      doc = win.document,
+      root = doc.documentElement,
+      modern = doc.addEventListener,
+
+      add = modern ? 'addEventListener' : 'attachEvent',
+      rem = modern ? 'removeEventListener' : 'detachEvent',
+      pre = modern ? '' : 'on',
+
+      init = function(e) {
+        if (e.type == 'readystatechange' && doc.readyState != 'complete') return;
+        (e.type == 'load' ? win : doc)[rem](pre + e.type, init, false);
+        if (!done && (done = true)) fn.call(win, e.type || e);
+      },
+
+      poll = function() {
+        try { root.doScroll('left'); } catch(e) { setTimeout(poll, 50); return; }
+        init('poll');
+      };
+
+      if (doc.readyState == 'complete') fn.call(win, 'lazy');
+      else {
+        if (!modern && root.doScroll) {
+          try { top = !win.frameElement; } catch(e) { }
+          if (top) poll();
         }
-        // for Internet Explorer
-        /*@cc_on
-        document.write(
-          "<scr"
-            + "ipt id=__ie_onload defer src='//:'><\/scr"
-            + "ipt>"
-        );
-        var script = document.getElementById("__ie_onload");
-        script.onreadystatechange = function () {
-          if (this.readyState === "complete") {
-            init(); // call the onload handler
-          }
-        };
-        @*/
-        // for Safari
-        if (/WebKit/i.test(navigator.userAgent)) { // sniff
-          window.__load_timer = setInterval(function () {
-            if (/loaded|complete/.test(document.readyState)) {
-              init();
-            }
-          }, 10);
-        }
-        // for other browsers
-        window.onload = init;
-        window.__load_events = [];
+        doc[add](pre + 'DOMContentLoaded', init, false);
+        doc[add](pre + 'readystatechange', init, false);
+        win[add](pre + 'load', init, false);
       }
-      window.__load_events.push(func);
+
     }
   };
 
-  hinclude.addDOMLoadEvent(function () { hinclude.run(); });
+  hinclude.contentLoaded(window, function () { hinclude.run(); });
 }());
 
