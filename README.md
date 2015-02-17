@@ -19,7 +19,9 @@ You can pass parameters to the included file
 Parameters will be available in your included file if you define a callback
 
 ```javascript
+// in the included file
 hinclude.registerCallback("include-myfile", function(element, request, data) {
   // do something dynamically interesting in your included file
+  console.log(data.foo);
 });
 ```
